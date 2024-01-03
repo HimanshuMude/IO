@@ -13,7 +13,7 @@ import (
 type Student struct {
 	PRN   string
 	Name  string
-	Marks string
+	Marks int
 }
 
 type Class struct {
@@ -35,12 +35,17 @@ func NewClass() *Class {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		// line= "2262005 Utkarsh 100"
 		fields := strings.Split(line, " ")
+
+		// fields=["22620005","Utkarsh","100"]
+
+		marks, _ := strconv.Atoi(fields[2])
 
 		student := Student{
 			PRN:   fields[0],
 			Name:  fields[1],
-			Marks: fields[2],
+			Marks: marks,
 		}
 
 		studentsData = append(studentsData, student)
@@ -49,28 +54,37 @@ func NewClass() *Class {
 }
 
 func (c *Class) WriteToFile() {
-	file, err := os.Create("db.txt")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer file.Close()
+	var lines []string
 
 	for _, student := range c.students {
-		line := fmt.Sprintf("%s %s %s\n", student.PRN, student.Name, student.Marks)
-		_, err := file.WriteString(line)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		sMarks:=strconv.Itoa(student.Marks)
+		line := fmt.Sprintf("%s %s %s\n", student.PRN, student.Name, sMarks)
+		lines = append(lines, line)
+	}
+
+	err := os.WriteFile("db.txt", []byte(strings.Join(lines, "")), 0644)
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
-func (c *Class) AddStudent(PRN, Name, Marks string) {
+func (c *Class) AddStudent() {
+	fmt.Println("Enter the first name of the student:")
+	var fname string
+	fmt.Scanln(&fname)
+
+	fmt.Println("Enter the PRN of the student:")
+	var prn string
+	fmt.Scanln(&prn)
+
+	fmt.Println("Enter the marks of the student:")
+	var marks int
+	fmt.Scanln(&marks)
+
 	newStudent := Student{
-		PRN:   PRN,
-		Name:  Name,
-		Marks: Marks,
+		PRN:   prn,
+		Name:  fname,
+		Marks: marks,
 	}
 
 	c.students = append(c.students, newStudent)
@@ -78,56 +92,88 @@ func (c *Class) AddStudent(PRN, Name, Marks string) {
 }
 
 func (c Class) ShowStudents() {
-	fmt.Println(c.students)
+	for _, student := range c.students {
+		fmt.Println("PRN:", student.PRN)
+		fmt.Println("Name:", student.Name)
+		fmt.Println("Marks:", student.Marks)
+		fmt.Println()
+	}
+	fmt.Println()
 }
 
-func (c *Class) UpdateStudent(PRN, Name, Marks string) {
-	tempData := c.students
+func (c *Class) UpdateStudent() {
+	fmt.Println("Enter the PRN of the student to be updated:")
+	var prn string
+	fmt.Scanln(&prn)
 
-	for i, v := range tempData {
-		if v.PRN == PRN {
-			tempData[i].Name = Name
-			tempData[i].Marks = Marks
-			break
+	for i, student := range c.students {
+		if student.PRN == prn {
+			fmt.Println("Enter the first name of the student:")
+			var fname string
+			fmt.Scanln(&fname)
+
+			fmt.Println("Enter the marks of the student:")
+			var marks int
+			fmt.Scanln(&marks)
+
+			c.students[i] = Student{PRN: prn, Name: fname, Marks: marks}
+
+			fmt.Println("Student updated successfully!")
+			fmt.Println()
+
+			c.WriteToFile()
+			return
 		}
 	}
-	c.students = tempData
-	c.WriteToFile()
 
+	fmt.Println("Student not found")
 }
 
-func (c *Class) DeleteStudent(PRN string) {
+func (c *Class) DeleteStudent() {
+
+	dataBase := c.students
+
+	fmt.Println("Enter the PRN of the student to be deleted:")
+	var prn string
+	fmt.Scanln(&prn)
+
 	var index int
 
-	tempData := c.students
-
-	for i, v := range tempData {
-		if v.PRN == PRN {
+	for i, student := range c.students {
+		if student.PRN == prn {
 			index = i
-			break
 		}
 	}
 
-	tempData = append(tempData[:index], tempData[index+1:]...)
-	c.students = tempData
-	c.WriteToFile()
+	dataBase = append(dataBase[:index], dataBase[index+1:]...)
+	c.students = dataBase
 
+	fmt.Println("Student deleted successfully!")
+	fmt.Println()
+
+	c.WriteToFile()
 }
 
+// we are running this for 40 times just to show the difference go routines make when used in heavy data processing scenarios
+// in normal scenarios code without go routines works better 
+// ex: try running the GetStat & GetStatG function without those loops
+// the function without concurrency will surely perform better because for small size of data it is efficient as compared to go routines
+
+// without go routines
 func (c Class) GetStatG() {
-	t:=time.Now()
+	t := time.Now()
 	var sum, avg, low, high int
 	// find Sum
-	for i:=0;i<20;i++{
-		sum =sum+ c.findSum()
+	for i := 0; i < 40; i++ {
+		sum = sum + c.findSum()
 	}
-	for i:=0;i<20;i++{
+	for i := 0; i < 40; i++ {
 		avg = c.findAverage()
 	}
-	for i:=0;i<20;i++{
+	for i := 0; i < 40; i++ {
 		low = c.findLowest()
 	}
-	for i:=0;i<20;i++{
+	for i := 0; i < 40; i++ {
 		high = c.findHighest()
 	}
 
@@ -135,6 +181,7 @@ func (c Class) GetStatG() {
 	fmt.Println(sum, avg, low, high)
 }
 
+// with goroutine
 func (c Class) GetStat() {
 	t := time.Now()
 	var wg sync.WaitGroup
@@ -142,28 +189,28 @@ func (c Class) GetStat() {
 	// find Sum
 	wg.Add(4)
 	go func() {
-		for i:=0;i<20;i++{
+		for i := 0; i < 40; i++ {
 			sum = c.findSum()
 		}
 		wg.Done()
 	}()
 
 	go func() {
-		for i:=0;i<20;i++{
+		for i := 0; i < 40; i++ {
 			avg = c.findAverage()
 		}
 		wg.Done()
 	}()
 
 	go func() {
-		for i:=0;i<20;i++{
+		for i := 0; i < 40; i++ {
 			low = c.findLowest()
 		}
 		wg.Done()
 	}()
 
 	go func() {
-		for i:=0;i<20;i++{
+		for i := 0; i < 40; i++ {
 			high = c.findHighest()
 		}
 		wg.Done()
@@ -179,11 +226,7 @@ func (c Class) findSum() int {
 	tempData := c.students
 
 	for _, v := range tempData {
-		val, err := strconv.Atoi(v.Marks)
-		if err != nil {
-			fmt.Println(err)
-		}
-		sum += val
+		sum += v.Marks
 	}
 	return sum
 }
@@ -198,11 +241,7 @@ func (c Class) findLowest() int {
 	tempData := c.students
 
 	for _, v := range tempData {
-		val, err := strconv.Atoi(v.Marks)
-		if err != nil {
-			fmt.Println(err)
-		}
-		lowest = min(lowest, val)
+		lowest = min(lowest, v.Marks)
 	}
 	return lowest
 }
@@ -213,11 +252,7 @@ func (c Class) findHighest() int {
 	tempData := c.students
 
 	for _, v := range tempData {
-		val, err := strconv.Atoi(v.Marks)
-		if err != nil {
-			fmt.Println(err)
-		}
-		highest = max(highest, val)
+		highest = max(highest, v.Marks)
 	}
 	return highest
 }

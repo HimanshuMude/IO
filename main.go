@@ -2,22 +2,51 @@ package main
 
 import (
 	features "cron/Features"
+	"fmt"
+	"os"
 )
 
+func loadChoices() {
+	fmt.Println("Choose one from the following options:")
+	fmt.Println("1. Add a student")
+	fmt.Println("2. View all students")
+	fmt.Println("3. Update a student")
+	fmt.Println("4. Delete a student")
+	fmt.Println("5. Get Stats")
+	fmt.Println("6. Exit")
+	fmt.Println()
+}
+
 func main() {
-	class:=features.NewClass()
-	// class.AddStudent("22620005","Suyash","150")
-	// class.AddStudent("22620003","Shivam","50")
-	// class.AddStudent("22620002","Soham","60")
-	// class.AddStudent("22620010","Saurabh","75")
-	// class.AddStudent("22620012","sanket","99")
-	// class.AddStudent("22620009","shardul","10")
-	// class.ShowStudents()
-	// class.DeleteStudent("22620005")
-	// class.ShowStudents()
-	// class.UpdateStudent("22620003","Speed","80")
-	// class.ShowStudents()
-	class.GetStat()
-	class.GetStatG()
+	class := features.NewClass()
+
+	fmt.Println("Welcome to the Student DB!")
+	fmt.Println()
+	for {
+
+		loadChoices()
+
+		var choice int
+		fmt.Scanln(&choice)
+
+		switch choice {
+		case 1:
+			class.AddStudent()
+		case 2:
+			class.ShowStudents()
+		case 3:
+			class.UpdateStudent()
+		case 4:
+			class.DeleteStudent()
+		case 5:
+			class.GetStat()
+		case 6:
+			// show with exit status 1 as well
+			os.Exit(0)
+		default:
+			fmt.Println("Invalid choice!")
+			fmt.Println()
+		}
+	}
 
 }
