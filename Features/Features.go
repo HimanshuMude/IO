@@ -53,11 +53,13 @@ func NewClass() *Class {
 	return &Class{students: studentsData}
 }
 
-func (c *Class) WriteToFile() {
+// Using go routine
+func (c *Class) WriteToFile(wg *sync.WaitGroup) {
+	t := time.Now()
 	var lines []string
 
 	for _, student := range c.students {
-		sMarks:=strconv.Itoa(student.Marks)
+		sMarks := strconv.Itoa(student.Marks)
 		line := fmt.Sprintf("%s %s %s\n", student.PRN, student.Name, sMarks)
 		lines = append(lines, line)
 	}
@@ -66,9 +68,31 @@ func (c *Class) WriteToFile() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	defer wg.Done()
+	fmt.Println(time.Since(t))
+}
+
+// Without Go routine
+func (c *Class) WriteToFileSerial() {
+	t := time.Now()
+	var lines []string
+
+	for _, student := range c.students {
+		sMarks := strconv.Itoa(student.Marks)
+		line := fmt.Sprintf("%s %s %s\n", student.PRN, student.Name, sMarks)
+		lines = append(lines, line)
+	}
+
+	err := os.WriteFile("db.txt", []byte(strings.Join(lines, "")), 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(time.Since(t))
 }
 
 func (c *Class) AddStudent() {
+	// var wg sync.WaitGroup
 	fmt.Println("Enter the first name of the student:")
 	var fname string
 	fmt.Scanln(&fname)
@@ -88,7 +112,27 @@ func (c *Class) AddStudent() {
 	}
 
 	c.students = append(c.students, newStudent)
-	c.WriteToFile()
+
+
+	// IMPORTANT CHANGE
+
+	// 1: sequential
+	c.WriteToFileSerial()
+	fmt.Println("Doing something else")
+
+	// 2: Async
+	// wg.Add(1)
+	// go func(){
+	// 	c.WriteToFile(&wg)
+	// }()
+	// fmt.Println("Doing something else")
+	// wg.Wait()
+
+	// NOTE!!!!
+	// 	the first version executes WriteToFileSerial() synchronously, blocking the main thread until the file writing is complete
+	// the second version launches a goroutine to handle file writing asynchronously, allowing the main thread to continue with other tasks while the file writing happens in the background.
+	// the main thread doesn't idle in either case. it's either actively executing the file writing task or managing other tasks while the goroutine runs.
+
 }
 
 func (c Class) ShowStudents() {
@@ -102,6 +146,7 @@ func (c Class) ShowStudents() {
 }
 
 func (c *Class) UpdateStudent() {
+	var wg sync.WaitGroup
 	fmt.Println("Enter the PRN of the student to be updated:")
 	var prn string
 	fmt.Scanln(&prn)
@@ -121,7 +166,9 @@ func (c *Class) UpdateStudent() {
 			fmt.Println("Student updated successfully!")
 			fmt.Println()
 
-			c.WriteToFile()
+			wg.Add(1)
+			go c.WriteToFile(&wg)
+			wg.Wait()
 			return
 		}
 	}
@@ -130,6 +177,8 @@ func (c *Class) UpdateStudent() {
 }
 
 func (c *Class) DeleteStudent() {
+
+	var wg sync.WaitGroup
 
 	dataBase := c.students
 
@@ -145,79 +194,35 @@ func (c *Class) DeleteStudent() {
 		}
 	}
 
+	// have to create a slide for this
 	dataBase = append(dataBase[:index], dataBase[index+1:]...)
 	c.students = dataBase
 
 	fmt.Println("Student deleted successfully!")
 	fmt.Println()
-
-	c.WriteToFile()
+	wg.Add(1)
+	go c.WriteToFile(&wg)
+	wg.Wait()
 }
 
 // we are running this for 40 times just to show the difference go routines make when used in heavy data processing scenarios
-// in normal scenarios code without go routines works better 
+// in normal scenarios code without go routines works better
 // ex: try running the GetStat & GetStatG function without those loops
 // the function without concurrency will surely perform better because for small size of data it is efficient as compared to go routines
 
 // without go routines
-func (c Class) GetStatG() {
-	t := time.Now()
-	var sum, avg, low, high int
-	// find Sum
-	for i := 0; i < 40; i++ {
-		sum = sum + c.findSum()
-	}
-	for i := 0; i < 40; i++ {
-		avg = c.findAverage()
-	}
-	for i := 0; i < 40; i++ {
-		low = c.findLowest()
-	}
-	for i := 0; i < 40; i++ {
-		high = c.findHighest()
-	}
-
-	fmt.Println(time.Since(t))
-	fmt.Println(sum, avg, low, high)
-}
-
-// with goroutine
 func (c Class) GetStat() {
-	t := time.Now()
-	var wg sync.WaitGroup
 	var sum, avg, low, high int
-	// find Sum
-	wg.Add(4)
-	go func() {
-		for i := 0; i < 40; i++ {
-			sum = c.findSum()
-		}
-		wg.Done()
-	}()
 
-	go func() {
-		for i := 0; i < 40; i++ {
-			avg = c.findAverage()
-		}
-		wg.Done()
-	}()
+	sum = sum + c.findSum()
 
-	go func() {
-		for i := 0; i < 40; i++ {
-			low = c.findLowest()
-		}
-		wg.Done()
-	}()
+	avg = c.findAverage()
 
-	go func() {
-		for i := 0; i < 40; i++ {
-			high = c.findHighest()
-		}
-		wg.Done()
-	}()
-	wg.Wait()
+	low = c.findLowest()
+
+	high = c.findHighest()
+
 	fmt.Println(sum, avg, low, high)
-	fmt.Println(time.Since(t))
 }
 
 func (c Class) findSum() int {

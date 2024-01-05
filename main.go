@@ -19,7 +19,6 @@ func loadChoices() {
 
 func main() {
 	class := features.NewClass()
-
 	fmt.Println("Welcome to the Student DB!")
 	fmt.Println()
 	for {
