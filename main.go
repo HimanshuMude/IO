@@ -20,15 +20,16 @@ func loadChoices() {
 }
 
 func main() {
+	populate.PopulateFile()
 	data := make(chan *features.Class)
 	var wg sync.WaitGroup
-	wg.Add(1)
+	
 	go features.NewClass(data, &wg)
-	close(data)
+	wg.Wait()
 	class := <-data
+	close(data)
 	fmt.Println("Welcome to the Student DB!")
 	fmt.Println()
-	populate.PopulateFile()
 	for {
 
 		loadChoices()
