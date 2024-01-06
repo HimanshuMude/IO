@@ -2,8 +2,10 @@ package main
 
 import (
 	features "cron/Features"
+	populate "cron/Populate"
 	"fmt"
 	"os"
+	"sync"
 )
 
 func loadChoices() {
@@ -18,9 +20,15 @@ func loadChoices() {
 }
 
 func main() {
-	class := features.NewClass()
+	data := make(chan *features.Class)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go features.NewClass(data, &wg)
+	close(data)
+	class := <-data
 	fmt.Println("Welcome to the Student DB!")
 	fmt.Println()
+	populate.PopulateFile()
 	for {
 
 		loadChoices()
