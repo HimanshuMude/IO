@@ -223,10 +223,8 @@ func (c *Class) DeleteStudent() {
 	wg.Wait()
 }
 
-// we are running this for 40 times just to show the difference go routines make when used in heavy data processing scenarios
-// in normal scenarios code without go routines works better
-// ex: try running the GetStat & GetStatG function without those loops
-// the function without concurrency will surely perform better because for small size of data it is efficient as compared to go routines
+// Go routines excel at IO bound tasks which means it basiaclly loweres the load of the main go routine by performing those tasks
+// ex- instead of main go routine performing DB taks we'll asssign that to other go routines till then main go routine can do something else
 
 // without go routines
 func (c Class) GetStat() {
