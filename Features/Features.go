@@ -20,8 +20,11 @@ type Class struct {
 	students []Student
 }
 
-func NewClass() *Class {
+func NewClass(data chan *Class, wg *sync.WaitGroup) {
 	// get info from db.txt file
+	wg.Add(1)
+	var myWG sync.WaitGroup
+	var mu sync.Mutex
 	file, err := os.Open("db.txt")
 	if err != nil {
 		fmt.Println(err)
@@ -33,24 +36,39 @@ func NewClass() *Class {
 
 	scanner := bufio.NewScanner(file)
 
+
+	/************************************
+			Implementing Goroutines
+	************************************/
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		// line= "2262005 Utkarsh 100"
-		fields := strings.Split(line, " ")
+		myWG.Add(1)
+		go func(line string){
+				
+				// line= "2262005 Utkarsh 100"
+				fields := strings.Split(line, " ")
 
-		// fields=["22620005","Utkarsh","100"]
+				// fields=["22620005","Utkarsh","100"]
 
-		marks, _ := strconv.Atoi(fields[2])
+				marks, _ := strconv.Atoi(fields[2])
 
-		student := Student{
-			PRN:   fields[0],
-			Name:  fields[1],
-			Marks: marks,
-		}
+				student := Student{
+					PRN:   fields[0],
+					Name:  fields[1],
+					Marks: marks,
+				}
+				mu.Lock()
+				studentsData = append(studentsData, student)
+				mu.Unlock()
+				myWG.Done()
 
-		studentsData = append(studentsData, student)
+		}(line)
+		
 	}
-	return &Class{students: studentsData}
+	myWG.Wait()
+	data <- &Class{students: studentsData}
+	wg.Done()
 }
 
 // Using go routine
